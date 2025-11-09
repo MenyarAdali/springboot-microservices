@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<item key="hasShownOverlayPopupBefore" value="true"/>
+	<section name="java.lang.Class">
+		<item key="replaceBarOpen" value="false"/>
+		<list key="findhistory">
+			<item value="bootstrap"/>
+			<item value="spring-cloud-starter-bootstrap"/>
+			<item value="client"/>
+			<item value="server"/>
+			<item value="eu"/>
+			<item value="et"/>
+			<item value="eureka"/>
+		</list>
+	</section>
+</section>

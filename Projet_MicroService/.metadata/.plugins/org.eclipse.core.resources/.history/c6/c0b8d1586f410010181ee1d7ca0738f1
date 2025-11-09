@@ -1,0 +1,3 @@
+spring.application.name=facture-service
+spring.datasource.url=jdbc:h2:mem:facture-db
+spring.cloud.discovery.enabled=false

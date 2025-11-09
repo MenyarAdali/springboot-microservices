@@ -1,0 +1,5 @@
+package org.ms.reglementservice.entites;
+
+public class Reglement {
+
+}

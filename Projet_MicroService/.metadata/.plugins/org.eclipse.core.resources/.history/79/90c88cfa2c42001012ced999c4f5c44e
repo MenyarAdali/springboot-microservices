@@ -1,0 +1,15 @@
+package org.ms.facture_service.feign;
+
+import java.util.List;
+
+import org.ms.facture_service.model.Produit;
+import org.ms.facture_service.model.Reglement;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+
+//feign
+@FeignClient(name = "REGLEMENT-SERVICE")
+public class ReglementServiceClient {
+	@GetMapping(path = "/reglements")
+	List<Reglement> getAllProduits();
+}

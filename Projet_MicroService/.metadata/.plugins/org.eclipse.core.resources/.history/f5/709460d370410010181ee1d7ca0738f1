@@ -1,0 +1,25 @@
+package org.ms.facture_service.web;
+
+import java.util.Collection;
+import java.util.Hashtable;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.ms.facture_service.entities.Facture;
+import org.ms.facture_service.entities.FactureLigne;
+import org.ms.facture_service.feign.ClientServiceClient;
+import org.ms.facture_service.feign.ProduitServiceClient;
+import org.ms.facture_service.model.Client;
+import org.ms.facture_service.model.Produit;
+import org.ms.facture_service.repository.FactureLigneRepository;
+import org.ms.facture_service.repository.FactureRepository;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
+import org.springframework.web.bind.annotation.*;
+
+@RefreshScope
+@RestController
+public class FactureRestController {
+	
+}

@@ -1,0 +1,62 @@
+import org.ms.reglementservice.entites.Reglement;
+import org.ms.reglementservice.repository.ReglementRepository;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/reglements")
+public class ReglementRestController {
+
+    private final ReglementRepository reglementRepository;
+
+    public ReglementRestController(ReglementRepository reglementRepository) {
+        this.reglementRepository = reglementRepository;
+    }
+
+    @GetMapping
+    public List<Reglement> getAll() {
+        return reglementRepository.findAll();
+    }
+
+    @GetMapping("/{id}")
+    public Reglement getById(@PathVariable Long id) {
+        return reglementRepository.findById(id).orElse(null);
+    }
+
+    @PostMapping
+    public Reglement save(@RequestBody Reglement reglement) {
+        return reglementRepository.save(reglement);
+    }
+
+    @PutMapping("/{id}")
+    public Reglement update(@PathVariable Long id, @RequestBody Reglement updatedReglement) {
+        Reglement r = reglementRepository.findById(id).orElse(null);
+        if (r != null) {
+            r.setFactureId(updatedReglement.getFactureId());
+            r.setMontant(updatedReglement.getMontant());
+            r.setDateReglement(updatedReglement.getDateReglement());
+            r.setModePaiement(updatedReglement.getModePaiement());
+            return reglementRepository.save(r);
+        }
+        return null;
+    }
+
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable Long id) {
+        reglementRepository.deleteById(id);
+    }
+
+    @GetMapping("/byFacture/{factureId}")
+    public List<Reglement> getByFactureId(@PathVariable Long factureId) {
+        return reglementRepository.findByFactureId(factureId);
+    }
+
+    @GetMapping("/resteAPayer/{factureId}")
+    public Double getResteAPayer(@PathVariable Long factureId) {
+        List<Reglement> reglements = reglementRepository.findByFactureId(factureId);
+        return reglements.stream()
+                         .mapToDouble(Reglement::getMontant)
+                         .sum();
+    }
+}

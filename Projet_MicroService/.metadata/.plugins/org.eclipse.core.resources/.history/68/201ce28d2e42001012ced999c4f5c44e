@@ -1,0 +1,29 @@
+package org.ms.facture_service.feign;
+
+import org.ms.reglementservice.entites.Reglement;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@FeignClient(name = "REGLEMENT-SERVICE")
+public interface ReglementServiceClient {
+
+    @GetMapping("/reglements/facture/{factureId}")
+    List<Reglement> findReglementsByFactureId(@PathVariable("factureId") Long factureId);
+
+    @GetMapping("/reglements/{id}")
+    Reglement findReglementById(@PathVariable("id") Long id);
+
+    @PostMapping("/reglements")
+    Reglement createReglement(@RequestBody Reglement reglement);
+
+    @PutMapping("/reglements/{id}")
+    Reglement updateReglement(@PathVariable("id") Long id, @RequestBody Reglement reglement);
+
+    @DeleteMapping("/reglements/{id}")
+    void deleteReglement(@PathVariable("id") Long id);
+
+    @GetMapping("/reglements")
+    List<Reglement> getAllReglements();
+}

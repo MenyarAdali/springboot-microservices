@@ -1,0 +1,13 @@
+package org.ms.reglementservice;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class ReglementServiceApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(ReglementServiceApplication.class, args);
+	}
+
+}

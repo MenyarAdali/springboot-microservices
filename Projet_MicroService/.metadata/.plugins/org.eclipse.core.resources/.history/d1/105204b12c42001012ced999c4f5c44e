@@ -1,0 +1,124 @@
+package org.ms.facture_service.web;
+
+import java.util.Collection;
+import java.util.Hashtable;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.ms.facture_service.entities.Facture;
+import org.ms.facture_service.entities.FactureLigne;
+import org.ms.facture_service.feign.ClientServiceClient;
+import org.ms.facture_service.feign.ProduitServiceClient;
+import org.ms.facture_service.model.Client;
+import org.ms.facture_service.model.Produit;
+import org.ms.facture_service.repository.FactureLigneRepository;
+import org.ms.facture_service.repository.FactureRepository;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
+import org.springframework.web.bind.annotation.*;
+
+@RefreshScope
+@RestController
+public class FactureRestController {
+	private FactureRepository factureRepository;
+	private FactureLigneRepository factureLigneRepository;
+	private ClientServiceClient clientServiceClient;
+	private ProduitServiceClient produitServiceClient;
+
+	public FactureRestController(FactureRepository factureRepository, FactureLigneRepository factureLigneRepository,
+			ClientServiceClient clientServiceClient, ProduitServiceClient produitServiceClient) {
+		this.factureRepository = factureRepository;
+		this.factureLigneRepository = factureLigneRepository;
+		this.clientServiceClient = clientServiceClient;
+		this.produitServiceClient = produitServiceClient;
+	}
+
+
+	@GetMapping(path = "/full-facture/{id}")
+	public Facture getFacture(@PathVariable(name = "id") Long id) {
+		Facture facture = factureRepository.findById(id).get();
+		Client client = clientServiceClient.findClientById(facture.getClientID());
+		facture.setClient(client);
+		facture.getFacturelignes().forEach(fl -> {
+			Produit product = produitServiceClient.findProductById(fl.getProduitID());
+			fl.setProduit(product);
+		});
+		return facture;
+	}
+	
+	@GetMapping("/clients")
+	public List<Client> getAllClients(){
+		return clientServiceClient.getAllClients();
+	}
+
+	@GetMapping("/factures")
+	public List<Facture> getAllFactures() {
+		return factureRepository.findAll();
+	}
+
+	@GetMapping("/factures-count")
+	public int getFacturesCount() {
+		return factureRepository.findAll().size();
+	}
+
+	@GetMapping("/client-factures/{clientId}")
+	public List<Facture> getFacturesByClientId(@PathVariable Long clientId) {
+		return factureRepository.findByClientID(clientId);
+	}
+
+	@DeleteMapping("/facture/{factureId}")
+	public void deleteFactureById(@PathVariable Long factureId) {
+		factureRepository.deleteById(factureId);
+	}
+
+	@PutMapping("/facture/{id}")
+	public void updateFacture(@PathVariable Long id, @RequestBody Facture updatedFacture) {
+		Optional<Facture> existingFacture = factureRepository.findById(id);
+		if (existingFacture.isPresent()) {
+			Facture facture = existingFacture.get();
+			facture.setDateFacture(updatedFacture.getDateFacture());
+			facture.setClientID(updatedFacture.getClientID());
+
+			facture.getFacturelignes().clear();
+			if (updatedFacture.getFacturelignes() != null) {
+				for (FactureLigne fl : updatedFacture.getFacturelignes()) {
+					fl.setFacture(facture);
+					facture.getFacturelignes().add(fl);
+				}
+			}
+
+			factureRepository.save(facture);
+		}
+	}
+	
+	@PostMapping("/factures")
+    public Facture saveFacture(@RequestBody Facture facture) {
+        // Enregistrer la facture sans les lignes
+        Facture savedFacture = factureRepository.save(
+            new Facture(null, facture.getDateFacture(), null, null, facture.getClientID())
+        );
+
+        // Enregistrer les lignes liées à cette facture
+        if (facture.getFacturelignes() != null) {
+            for (FactureLigne fl : facture.getFacturelignes()) {
+                fl.setFacture(savedFacture);
+                factureLigneRepository.save(fl);
+            }
+        }
+
+        // Récupérer les lignes de la facture
+        Collection<FactureLigne> lignes = factureLigneRepository.findByFactureId(savedFacture.getId());
+
+        // Ajouter le client
+        savedFacture.setClient(clientServiceClient.findClientById(savedFacture.getClientID()));
+        savedFacture.setFacturelignes(lignes);
+
+        // Ajouter le produit à chaque ligne
+        for (FactureLigne fl : lignes) {
+            fl.setProduit(produitServiceClient.findProductById(fl.getProduitID()));
+        }
+
+        return savedFacture;
+    }
+}

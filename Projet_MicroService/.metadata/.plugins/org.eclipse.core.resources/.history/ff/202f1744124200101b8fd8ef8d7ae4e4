@@ -1,0 +1,5 @@
+spring.application.name=reglement-service
+spring.config.import=configserver:
+spring.cloud.config.uri=http://localhost:5555
+server.port=8084
+management.endpoints.web.exposure.include=*

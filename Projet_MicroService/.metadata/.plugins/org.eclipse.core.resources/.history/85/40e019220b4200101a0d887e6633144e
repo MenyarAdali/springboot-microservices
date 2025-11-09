@@ -1,0 +1,38 @@
+package org.ms.produitservice.web;
+
+import org.ms.produitservice.entities.Produit;
+import org.ms.produitservice.repository.ProduitRepository;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RequestMapping("/produits") // base path
+@RestController
+public class ProduitRestController {
+
+    private final ProduitRepository produitRepository;
+
+    public ProduitRestController(ProduitRepository produitRepository) {
+        this.produitRepository = produitRepository;
+    }
+
+    @GetMapping("/")
+    public List<Produit> getAllProduits() {
+        return produitRepository.findAll();
+    }
+    @GetMapping("/all")
+    public List<Produit> getAll() {
+        return produitRepository.findAll();
+    }
+
+
+    @GetMapping("/{id}")
+    public Produit getProduitById(@PathVariable Long id) {
+        return produitRepository.findById(id).orElse(null);
+    }
+    
+    @PostMapping("/")
+    public Produit addProduit(@RequestBody Produit produit) {
+        return produitRepository.save(produit);
+    }
+}

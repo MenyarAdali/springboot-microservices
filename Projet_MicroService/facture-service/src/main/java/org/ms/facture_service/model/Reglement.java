@@ -1,0 +1,16 @@
+package org.ms.facture_service.model;
+
+import java.time.LocalDate;
+
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import lombok.Data;
+@Data
+public class Reglement {
+    private Long id;
+    private Long factureId;
+    private Double montant;
+    private LocalDate dateReglement;
+    private String modePaiement; 
+}

@@ -1,0 +1,4 @@
+spring.application.name=produit-service
+spring.cloud.config.uri=http://localhost:5555
+server.port=8081
+management.endpoints.web.exposure.include=*

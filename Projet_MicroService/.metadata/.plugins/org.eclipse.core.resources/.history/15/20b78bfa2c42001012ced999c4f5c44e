@@ -1,0 +1,9 @@
+package org.ms.facture_service.feign;
+
+import org.springframework.cloud.openfeign.FeignClient;
+
+//feign
+@FeignClient(name = "REGLEMENT-SERVICE")
+public class ReglementServiceClient {
+
+}

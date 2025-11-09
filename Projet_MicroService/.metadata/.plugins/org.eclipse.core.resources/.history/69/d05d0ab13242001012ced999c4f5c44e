@@ -1,0 +1,76 @@
+package org.ms.facture_service.entities;
+
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+import org.ms.facture_service.model.Client;
+import org.ms.facture_service.model.Produit;
+import org.ms.facture_service.model.Reglement;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+@Entity
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Facture {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private LocalDate dateFacture;
+
+    @OneToMany(mappedBy = "facture", cascade = CascadeType.ALL)
+    @JsonManagedReference // Serialize facturelignes
+    private Collection<FactureLigne> facturelignes = new ArrayList<>();
+
+    @Transient
+    private Client client;
+
+    private Long clientID;
+
+    @Transient
+    private List<Reglement> reglements = new ArrayList<>();
+
+    public Double getTotalAmount() {
+        if (facturelignes == null) {
+            return 0.0;
+        }
+        return facturelignes.stream()
+                .mapToDouble(fl -> {
+                    Produit produit = fl.getProduit();
+                    return produit != null ? produit.getPrice() * fl.getQuantity() : 0.0;
+                })
+                .sum();
+    }
+
+    public Double getTotalPaid() {
+        if (reglements == null) {
+            return 0.0;
+        }
+        return reglements.stream()
+                .mapToDouble(Reglement::getMontant)
+                .sum();
+    }
+
+    public String getPaymentStatus() {
+        double totalAmount = getTotalAmount();
+        double totalPaid = getTotalPaid();
+        if (totalAmount == 0.0) {
+            return "UNPAID";
+        }
+        if (totalPaid >= totalAmount) {
+            return "PAID";
+        } else if (totalPaid > 0) {
+            return "PARTIALLY_PAID";
+        } else {
+            return "UNPAID";
+        }
+    }
+}

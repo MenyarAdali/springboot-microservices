@@ -1,0 +1,116 @@
+package org.ms.facture_service;
+
+import org.ms.facture_service.entities.Facture;
+import org.ms.facture_service.entities.FactureLigne;
+import org.ms.facture_service.feign.ClientServiceClient;
+import org.ms.facture_service.feign.ProduitServiceClient;
+import org.ms.facture_service.feign.ReglementServiceClient;
+import org.ms.facture_service.model.Client;
+import org.ms.facture_service.model.Produit;
+import org.ms.facture_service.model.Reglement;
+import org.ms.facture_service.repository.FactureLigneRepository;
+import org.ms.facture_service.repository.FactureRepository;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.openfeign.EnableFeignClients;
+import org.springframework.context.annotation.Bean;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+@SpringBootApplication
+@EnableFeignClients
+public class FactureServiceApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(FactureServiceApplication.class, args);
+    }
+
+    @Bean
+    CommandLineRunner start(FactureRepository factureRepository,
+                           FactureLigneRepository factureLigneRepository,
+                           ClientServiceClient clientServiceClient,
+                           ProduitServiceClient produitServiceClient,
+                           ReglementServiceClient reglementServiceClient) {
+        return args -> {
+            Random random = new Random();
+            // Retrieve all clients
+            List<Client> clients = clientServiceClient.getAllClients();
+            if (clients.isEmpty()) {
+                System.out.println("No clients found. Please ensure CLIENT-SERVICE is running and has data.");
+                return;
+            }
+
+            // Retrieve all products
+            List<Produit> produits = produitServiceClient.getAllProduits();
+            if (produits.isEmpty()) {
+                System.out.println("No products found. Please ensure PRODUIT-SERVICE is running and has data.");
+                return;
+            }
+
+            // Create 5 fake invoices
+            for (int i = 0; i < 5; i++) {
+                // Select a random client
+                Client client = clients.get(random.nextInt(clients.size()));
+
+                // Create a new invoice with initialized facturelignes
+                Facture facture = Facture.builder()
+                        .dateFacture(LocalDate.now().minusDays(random.nextInt(30)))
+                        .clientID(client.getId())
+                        .facturelignes(new ArrayList<>()) // Ensure facturelignes is initialized
+                        .build();
+                facture = factureRepository.save(facture);
+
+                // Add 1-3 random products to the invoice as FactureLigne
+                int numLignes = 1 + random.nextInt(3);
+                List<FactureLigne> factureLignes = new ArrayList<>();
+                for (int j = 0; j < numLignes; j++) {
+                    Produit produit = produits.get(random.nextInt(produits.size()));
+                    FactureLigne factureLigne = FactureLigne.builder()
+                            .produitID(produit.getId())
+                            .quantity(1 + random.nextInt(10)) // Random quantity between 1 and 10
+                            .facture(facture)
+                            .build();
+                    factureLigne = factureLigneRepository.save(factureLigne);
+                    factureLignes.add(factureLigne);
+                }
+
+                // Set facturelignes to ensure the collection is updated
+                facture.setFacturelignes(factureLignes);
+                factureRepository.save(facture); // Save again to update relationships
+
+                // Simulate payments for some invoices
+                double totalAmount = facture.getTotalAmount(); // Now safe to call
+                if (random.nextBoolean()) { // 50% chance to add payments
+                    int numPayments = 1 + random.nextInt(2); // 1-2 payments
+                    double paidAmount = 0.0;
+                    for (int k = 0; k < numPayments; k++) {
+                        double paymentAmount;
+                        if (k == numPayments - 1 && random.nextBoolean()) {
+                            // Last payment may cover the remaining amount for "PAID" status
+                            paymentAmount = totalAmount - paidAmount;
+                        } else {
+                            // Partial payment
+                            paymentAmount = totalAmount * (0.2 + random.nextDouble() * 0.3); // 20-50% of total
+                        }
+                        paidAmount += paymentAmount;
+
+                        // Create Reglement using setters
+                        Reglement reglement = new Reglement();
+                        reglement.setFactureId(facture.getId());
+                        reglement.setMontant(paymentAmount);
+                        reglement.setDateReglement(LocalDate.now().minusDays(random.nextInt(15)));
+                        reglement.setModePaiement(random.nextBoolean() ? "Credit Card" : "Bank Transfer");
+
+                        reglementServiceClient.createReglement(reglement);
+                    }
+                }
+                // Some invoices remain unpaid (no payments added)
+            }
+
+            System.out.println("Fake data generation completed. 5 invoices created with associated lines and payments.");
+        };
+    }
+}

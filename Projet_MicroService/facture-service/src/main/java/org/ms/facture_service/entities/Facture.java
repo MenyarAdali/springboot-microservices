@@ -1,0 +1,79 @@
+package org.ms.facture_service.entities;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import org.ms.facture_service.model.Client;
+import org.ms.facture_service.model.Produit;
+import org.ms.facture_service.model.Reglement;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+@Entity
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Facture {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private LocalDate dateFacture;
+
+    @OneToMany(mappedBy = "facture", cascade = CascadeType.ALL)
+    @JsonProperty("facturelignes")
+    private Collection<FactureLigne> facturelignes = new ArrayList<>();
+
+    @Transient
+    private Client client;
+
+    private Long clientID;
+
+    @Transient
+    private List<Reglement> reglements = new ArrayList<>();
+
+    // Calculate total amount of the invoice
+    public Double getTotalAmount() {
+        if (facturelignes == null) {
+            return 0.0; // Return 0 if facturelignes is null
+        }
+        return facturelignes.stream()
+                .mapToDouble(fl -> {
+                    Produit produit = fl.getProduit();
+                    return produit != null ? produit.getPrice() * fl.getQuantity() : 0.0;
+                })
+                .sum();
+    }
+
+    // Calculate total paid amount
+    public Double getTotalPaid() {
+        if (reglements == null) {
+            return 0.0; // Return 0 if reglements is null
+        }
+        return reglements.stream()
+                .mapToDouble(Reglement::getMontant)
+                .sum();
+    }
+
+    // Determine payment status
+    public String getPaymentStatus() {
+        double totalAmount = getTotalAmount();
+        double totalPaid = getTotalPaid();
+        if (totalAmount == 0.0) {
+            return "UNPAID"; // Handle case where invoice has no lines
+        }
+        if (totalPaid >= totalAmount) {
+            return "PAID";
+        } else if (totalPaid > 0) {
+            return "PARTIALLY_PAID";
+        } else {
+            return "UNPAID";
+        }
+    }
+}

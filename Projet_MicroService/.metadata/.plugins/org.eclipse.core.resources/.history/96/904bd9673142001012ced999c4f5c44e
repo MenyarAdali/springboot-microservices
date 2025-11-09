@@ -1,0 +1,154 @@
+package org.ms.facture_service.web;
+
+import org.ms.facture_service.entities.Facture;
+import org.ms.facture_service.entities.FactureLigne;
+import org.ms.facture_service.feign.ClientServiceClient;
+import org.ms.facture_service.feign.ProduitServiceClient;
+import org.ms.facture_service.feign.ReglementServiceClient;
+import org.ms.facture_service.model.Client;
+import org.ms.facture_service.model.Produit;
+import org.ms.facture_service.model.Reglement;
+import org.ms.facture_service.repository.FactureLigneRepository;
+import org.ms.facture_service.repository.FactureRepository;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+
+@RestController
+public class FactureRestController {
+    private final FactureRepository factureRepository;
+    private final FactureLigneRepository factureLigneRepository;
+    private final ClientServiceClient clientServiceClient;
+    private final ProduitServiceClient produitServiceClient;
+    private final ReglementServiceClient reglementServiceClient;
+
+    public FactureRestController(FactureRepository factureRepository,
+                                 FactureLigneRepository factureLigneRepository,
+                                 ClientServiceClient clientServiceClient,
+                                 ProduitServiceClient produitServiceClient,
+                                 ReglementServiceClient reglementServiceClient) {
+        this.factureRepository = factureRepository;
+        this.factureLigneRepository = factureLigneRepository;
+        this.clientServiceClient = clientServiceClient;
+        this.produitServiceClient = produitServiceClient;
+        this.reglementServiceClient = reglementServiceClient;
+    }
+
+    @GetMapping(path = "/full-facture/{id}")
+    public Facture getFacture(@PathVariable(name = "id") Long id) {
+        Facture facture = factureRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Facture not found"));
+        Client client = clientServiceClient.findClientById(facture.getClientID());
+        facture.setClient(client);
+        facture.getFacturelignes().forEach(fl -> {
+            Produit product = produitServiceClient.findProductById(fl.getProduitID());
+            fl.setProduit(product);
+        });
+        List<Reglement> reglements = reglementServiceClient.findReglementsByFactureId(id);
+        facture.setReglements(reglements);
+        return facture;
+    }
+
+    @GetMapping("/clients")
+    public List<Client> getAllClients() {
+        return clientServiceClient.getAllClients();
+    }
+
+    @GetMapping("/factures")
+    public List<Facture> getAllFactures() {
+        List<Facture> factures = factureRepository.findAll();
+        factures.forEach(this::enrichFacture);
+        return factures;
+    }
+
+    @GetMapping("/factures-count")
+    public int getFacturesCount() {
+        return factureRepository.findAll().size();
+    }
+
+    @GetMapping("/client-factures/{clientId}")
+    public List<Facture> getFacturesByClientId(@PathVariable Long clientId) {
+        List<Facture> factures = factureRepository.findByClientID(clientId);
+        factures.forEach(this::enrichFacture);
+        return factures;
+    }
+
+    @GetMapping("/client-factures/{clientId}/paid")
+    public List<Facture> getPaidFacturesByClientId(@PathVariable Long clientId) {
+        List<Facture> factures = factureRepository.findByClientID(clientId);
+        factures.forEach(this::enrichFacture);
+        return factures.stream()
+                .filter(facture -> "PAID".equals(facture.getPaymentStatus()))
+                .toList();
+    }
+
+    @GetMapping("/client-factures/{clientId}/unpaid")
+    public List<Facture> getUnpaidFacturesByClientId(@PathVariable Long clientId) {
+        List<Facture> factures = factureRepository.findByClientID(clientId);
+        factures.forEach(this::enrichFacture);
+        return factures.stream()
+                .filter(facture -> !"PAID".equals(facture.getPaymentStatus()))
+                .toList();
+    }
+
+    @GetMapping("/facture/{factureId}/reglements")
+    public List<Reglement> getReglementsByFactureId(@PathVariable Long factureId) {
+        return reglementServiceClient.findReglementsByFactureId(factureId);
+    }
+
+    @PostMapping("/factures")
+    public Facture saveFacture(@RequestBody Facture facture) {
+        Facture savedFacture = factureRepository.save(
+                new Facture(null, facture.getDateFacture(), null, null, facture.getClientID(), null)
+        );
+
+        if (facture.getFacturelignes() != null) {
+            for (FactureLigne fl : facture.getFacturelignes()) {
+                fl.setFacture(savedFacture);
+                factureLigneRepository.save(fl);
+            }
+        }
+
+        return enrichFacture(savedFacture);
+    }
+
+    @DeleteMapping("/facture/{factureId}")
+    public void deleteFactureById(@PathVariable Long factureId) {
+        factureRepository.deleteById(factureId);
+    }
+
+    @PutMapping("/facture/{id}")
+    public void updateFacture(@PathVariable Long id, @RequestBody Facture updatedFacture) {
+        Optional<Facture> existingFacture = factureRepository.findById(id);
+        if (existingFacture.isPresent()) {
+            Facture facture = existingFacture.get();
+            facture.setDateFacture(updatedFacture.getDateFacture());
+            facture.setClientID(updatedFacture.getClientID());
+
+            facture.getFacturelignes().clear();
+            if (updatedFacture.getFacturelignes() != null) {
+                for (FactureLigne fl : updatedFacture.getFacturelignes()) {
+                    fl.setFacture(facture);
+                    facture.getFacturelignes().add(fl);
+                }
+            }
+
+            factureRepository.save(facture);
+        }
+    }
+
+    // Helper method to enrich Facture with client, products, and payments
+    private Facture enrichFacture(Facture facture) {
+        Client client = clientServiceClient.findClientById(facture.getClientID());
+        facture.setClient(client);
+        facture.getFacturelignes().forEach(fl -> {
+            Produit product = produitServiceClient.findProductById(fl.getProduitID());
+            fl.setProduit(product);
+        });
+        List<Reglement> reglements = reglementServiceClient.findReglementsByFactureId(facture.getId());
+        facture.setReglements(reglements);
+        return facture;
+    }
+}
