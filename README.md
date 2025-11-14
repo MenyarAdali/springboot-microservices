@@ -51,9 +51,9 @@ The project is composed of several independent microservices, each responsible f
                  |                                     |
    +-------------+---------------------------+---------+--------------------+
    |             |                           |                              |
-+------v------+ +-----v-------+ +--------v-------+ +---------v-------+
-| Auth Service| | Client Svc | | Facture Svc | | Reglement Svc |
-+-------------+ +-------------+ +----------------+ +----------------+
+   +------v------+ +-----v-------+ +--------v-------+ +---------v-------+
+   | Auth Service| | Client Svc | | Facture Svc | | Reglement Svc |
+   +-------------+ +-------------+ +----------------+ +----------------+
 
 communicate via REST APIs through Gateway---
 
